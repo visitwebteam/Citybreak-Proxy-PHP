@@ -1,0 +1,5 @@
+; $Id: visitproxy.info,v 1.0.0.0 2009/06/29 16:23:17 eh Exp $
+name = Visit Proxy Client Module
+description = Adds some nice functionality
+core = 6.x
+package = Visit Technology Group

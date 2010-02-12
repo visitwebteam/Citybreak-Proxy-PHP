@@ -1,0 +1,174 @@
+<?php
+global $VISIT_PROXY_ACTIVE;
+$VISIT_PROXY_ACTIVE	= false;
+
+function visitproxy_getclient() {
+	global $VISIT_PROXY_ACTIVE;
+	if ($VISIT_PROXY_ACTIVE !== TRUE)
+		return false;
+	//instantiate visitproxyclient
+	$lang = i18n_get_lang();
+	$baseurl = variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', ""));
+	$visitproxyclient = false;
+	if (strlen($baseurl) > 0) {
+		$rows = explode("\n", $baseurl);
+		$base = $baseurl;
+		foreach ($rows as $row) {
+			$row = url(trim(str_replace("//", "/", str_replace("/%", "", $row))));
+			//firep(url($row), "Home");
+			if (strpos($_SERVER['REQUEST_URI'], $row) !== FALSE) {
+				$visitproxyclient = visitproxy_get_client($row);
+				return $visitproxyclient;				
+			}
+		}
+	}
+	
+	//only make request if we are inside the base url
+	//if($visitproxyclient && $visitproxyclient->baseUrlCalled())
+	return $visitproxyclient;
+}
+
+function visitproxy_get_client($baseUrl, $lang = false) {
+	$key = variable_get('visitproxy_key', "");
+	module_load_include('php', 'visitproxy', 'VisitProxyClient');
+	return new VisitProxyClient($key,$baseUrl, variable_get('visitproxy_proxyurl', ""), visitproxy_get_culture($lang));
+}
+
+function visitproxy_get_culture($lang = false) {
+	if (!$lang)
+		$lang = i18n_get_lang();
+	module_load_include('php', 'visitproxy', 'cultures');
+	$cultures = VisitProxyCultures();
+	if (isset($cultures[$lang])) {
+		return $cultures[$lang];
+	} else {
+		return "en-US";
+	}
+}
+
+function visitproxy_menu() {
+	$items = array();
+	
+	$items['admin/settings/visitproxy'] = array(
+		'title' => 'Citybreak Information Proxy',
+		'description' => 'Settings for the Citybreak Information Proxy',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('visitproxy_admin'),
+		'access arguments' => array('access administration pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	$lang = i18n_get_lang();
+	$baseurl = variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', ""));
+	if (strlen($baseurl) > 0) {
+		$rows = explode("\n", $baseurl);
+		foreach ($rows as $row) {
+			$items[trim($row)] = array(
+		   		'type' => MENU_CALLBACK,
+				'access callback' => 'user_access',
+				'access arguments' => array('access content'),
+				 //'access callback' => TRUE
+				 
+				'page callback' => 'visitproxy_url_callback'  
+			);
+		}
+	}
+
+	return $items;
+}
+
+function visitproxy_settings_form_submit($form_id, &$form) {
+	menu_cache_clear_all();
+}
+
+function visitproxy_admin() {
+	$form = array();
+	$lang = i18n_get_lang();
+	$form['visitproxy_key'] = array(
+		'#type' => 'textfield',
+		'#title' => t('API Key'),
+		'#default_value' => variable_get('visitproxy_key', ""),
+		'#description' => t("API Key for Citybreak Information Proxy"),
+		'#required' => TRUE
+	); 
+  
+	$form['visitproxy_baseurl_'.$lang] = array(
+		'#type' => 'textarea',
+		'#title' => t('Base urls'),
+		'#default_value' => variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', "")),
+		'#description' => t("Base urls for proxy calls. All pages under this url will be passed to the proxy. This setting is language specific."),
+		'#required' => TRUE
+	); 
+  
+	$form['visitproxy_proxyurl'] = array(
+	  	'#type' => 'textfield',
+	    '#title' => t('Proxy server (optional)'),
+	    '#default_value' => variable_get('visitproxy_proxyurl', ""),
+	    '#description' => t("Url to the proxy server. Leave blank for default."),
+	    '#required' => FALSE
+	); 
+	#$form['#submit'][] = 'visitproxy_settings_form_submit'; 
+	menu_cache_clear_all();
+	return system_settings_form($form);
+}
+/**
+* Implementation of hook_block
+* @param string $op one of "list", "view", "save" and "configure"
+* @param integer $delta code to identify the block
+* @param array $edit only for "save" operation
+**/
+function visitproxy_block($op = 'list', $delta = 0, $edit = array()) { 
+	global $visitproxyclient;
+	if ($op == "list") {
+	// Generate listing of blocks from this module, for the admin/block page
+		$block = array();
+		$block[0]["info"] = t('Visit Proxy Client');
+		return $block;
+	}  else if ($op == 'view') {
+		
+		// Generate our block content
+		
+		// content variable that will be returned for display
+		$block_content = visitproxy_render(); 
+		
+		// check to see if there was any content before returning
+		//  the block view
+		if (strlen($block_content) == 0) {
+		  // no content from a week ago, return nothing.
+			return;
+		}
+		
+		// set up the block
+		//$block['subject'] = 'Visit Proxy Client';
+		$block['content'] = $block_content;
+		return $block;
+	}
+
+} // function visitproxy_block
+
+function visitproxy_render() {
+	$visitproxyclient = visitproxy_getclient();
+	if ($visitproxyclient) {
+		$visitproxyclient->makeRequest();
+		return $visitproxyclient->getBody();
+	}
+	return "";
+}
+
+function visitproxy_tpl_render($baseurl) {
+	$visitproxyclient = visitproxy_get_client($baseurl);
+	if ($visitproxyclient) {
+		$visitproxyclient->makeRequest();
+		return $visitproxyclient->getBody();
+	}
+	return "";
+}
+
+function visitproxy_url_callback() {
+	global $VISIT_PROXY_ACTIVE;
+	$VISIT_PROXY_ACTIVE	= true;
+	$GLOBALS['conf']['cache'] = FALSE;
+	return "";
+	#$data = visitproxy_render();
+	#return $data;
+}
+
