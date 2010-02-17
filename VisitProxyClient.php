@@ -128,7 +128,7 @@ class VisitProxyClient  {
 	}
 	
 	private function readHeader($curl, $header) {
-		firep($header, "Header");
+		$this->debug($header, "Header");
 		//extracting example data: filename from header field Content-Disposition
 		if (preg_match("/Set-Cookie: ASP.NET_SessionId=([A-Za-z0-9]*);/",$header,$matches)) {
 			$_SESSION['visitSessionId'] = $matches[1];
