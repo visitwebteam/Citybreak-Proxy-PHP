@@ -31,7 +31,7 @@ class VisitProxyClient  {
 		}
 	}
 
-	const PROXY_URL = "http://127.0.0.1:7070";
+	const PROXY_URL = "http://proxy.citybreak.com";
 	
 	function __construct($apiKey, $baseUrl, $url = "", $language = "en-US") {
 		$this->apiKey = $apiKey;
@@ -150,6 +150,7 @@ class VisitProxyClient  {
 		$reqParam .= "&culture=".urlencode($this->lang);
 //		$reqParam .= "&rewrite=".urlencode($this->usingRewrite ? 1:0);
 		$reqParam .= "&format=".urlencode($this->format);
+		$reqParam .= "&remoteIp=".urlencode($_SERVER['REMOTE_ADDR']);
 		
 		return $reqParam;
 	}
