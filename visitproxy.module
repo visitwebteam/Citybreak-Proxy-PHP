@@ -15,8 +15,8 @@ function visitproxy_getclient() {
 		$base = $baseurl;
 		foreach ($rows as $row) {
 			$row = url(trim(str_replace("//", "/", str_replace("/%", "", $row))));
-			echo($row."<br />");
-			if (strpos($_SERVER['REQUEST_URI'], $row) === 0) {
+			
+			if (strpos($_SERVER['REQUEST_URI'], $row."/") === 0) {
 				$visitproxyclient = visitproxy_get_client($row);
 				return $visitproxyclient;				
 			}
