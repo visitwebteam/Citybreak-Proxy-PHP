@@ -10,6 +10,7 @@ class VisitProxyClient  {
 	private $resultStatus;
 	private $resultCode;
 	private $enableDebug;
+	private $resultLocation;
 	
 	/**
 	 * @return unknown
@@ -41,6 +42,7 @@ class VisitProxyClient  {
 		$this->lang = $language;
 		$this->resultStatus = "HTTP/1.1 200 OK";
 		$this->resultCode = 200;
+		$this->resultLocation = "";
 		if (function_exists("firep")) {
 			$this->enableDebug = true;
 		} else {
@@ -67,8 +69,7 @@ class VisitProxyClient  {
 		}
 		
 		$postData = trim(file_get_contents('php://input'));
-		
-		$context_options = array ('http' => array ('method' => $method, 'header' => $header. "\r\n", 'content' => $postData ) );
+		$context_options = array ('http' => array ('method' => $method, 'header' => $header. "\r\n", 'content' => $postData, 'max_redirects' => 0, 'ignore_errors' => true ) );
 
 		$resultCode = 0;
 		$resultText  = "";
@@ -77,39 +78,40 @@ class VisitProxyClient  {
 		
 		$proxyUri = $this->proxyUrl.$requestUri.$this->constructParams();
 		$this->debug($proxyUri, "Proxy url");
+		$this->debug(var_export($postData, true), "Post data");
 		if (function_exists('curl_init')) {
 			$this->debug("Curl", "Request type");
 			$curl = curl_init($proxyUri);
 			curl_setopt($curl, CURLOPT_COOKIE, $cookie);
 			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($curl, CURLOPT_HEADER, false);
+			curl_setopt($curl, CURLOPT_HEADER, true);
 			curl_setopt($curl, CURLOPT_HEADERFUNCTION, array(&$this,'readHeader'));
 			
-			if (strlen($postData) > 0) {
+			if ($method == "POST") {
 				curl_setopt($curl, CURLOPT_POST, true);
 				curl_setopt($curl, CURLOPT_POSTFIELDS,$postData);
-				
 			}
 			$this->body = curl_exec($curl);
-			//$this->resultCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+
 			curl_close($curl);
 		} else {
 			$this->debug("FOpen", "Request type");
+			$this->debug($context_options, "Context options");
 			$context = stream_context_create ( $context_options );
 			
-			$handle = @fopen ($proxyUri, 'r', false, $context );
-			$this->debug("Curl", "Request type");
-			if(!$handle) {
+			$handle = fopen ($proxyUri, 'r', false, $context );
+			if($handle === false) {
 				$this->handleError();
 				return;
 			}
-	
+			$this->debug("Handle success");
 			$result = "";
 			while (!feof($handle)) {
 	           	$result .= fread($handle, 4096);
 	       	}
 			
 			$meta = stream_get_meta_data ( $handle );
+			$this->debug($meta, "Meta");
 	       	fclose($handle);
 			if(isset($meta["wrapper_data"]["headers"]))
 				$headers = $meta["wrapper_data"]["headers"];
@@ -126,7 +128,9 @@ class VisitProxyClient  {
 		
 		if (!$noheader && strlen($this->resultStatus) > 0) {
 			header($this->resultStatus);
-			if ($this->resultCode != 200) {
+			if ($this->resultCode >= 300 && $this->resultCode <= 399) {
+				header($this->resultLocation);
+			} else if ($this->resultCode != 200) {
 				$this->handleError();
 			}
 		}
@@ -142,6 +146,9 @@ class VisitProxyClient  {
 		if (preg_match("/HTTP\/[0-9].[0-9] ([0-9]*) /",$header,$matches)) {
 			$this->resultStatus = $header;
 			$this->resultCode=$matches[1];
+		}
+		if (strpos($header, "Location:") === 0) {
+			$this->resultLocation = $header;
 		}
 		
 		
