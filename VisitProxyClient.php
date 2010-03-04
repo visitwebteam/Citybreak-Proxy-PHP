@@ -46,6 +46,7 @@ class VisitProxyClient  {
 		} else {
 			$this->enableDebug = false;
 		}
+		$this->errorCodeReceived = false;
 	}
 	
 	function makeRequest($url = "", $noheader = false) {
@@ -90,7 +91,7 @@ class VisitProxyClient  {
 				
 			}
 			$this->body = curl_exec($curl);
-			$this->resultCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+			//$this->resultCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 			curl_close($curl);
 		} else {
 			$this->debug("FOpen", "Request type");
@@ -123,8 +124,13 @@ class VisitProxyClient  {
 		}
 		
 		
-		if (!$noheader && strlen($this->resultStatus) > 0)
+		if (!$noheader && strlen($this->resultStatus) > 0) {
 			header($this->resultStatus);
+			if ($this->resultCode != 200) {
+				$this->handleError();
+			}
+		}
+		
 	}
 	
 	private function readHeader($curl, $header) {
