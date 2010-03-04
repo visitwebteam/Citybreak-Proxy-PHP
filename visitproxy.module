@@ -15,7 +15,8 @@ function visitproxy_getclient() {
 		$base = $baseurl;
 		foreach ($rows as $row) {
 			$row = url(trim(str_replace("//", "/", str_replace("/%", "", $row))));
-			if (strpos($_SERVER['REQUEST_URI'], $row) !== FALSE) {
+			echo($row."<br />");
+			if (strpos($_SERVER['REQUEST_URI'], $row) === 0) {
 				$visitproxyclient = visitproxy_get_client($row);
 				return $visitproxyclient;				
 			}
@@ -56,23 +57,42 @@ function visitproxy_menu() {
 		'access arguments' => array('access administration pages'),
 		'type' => MENU_NORMAL_ITEM,
 	);
-	$lang = i18n_get_lang();
-	$baseurl = variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', ""));
-	if (strlen($baseurl) > 0) {
-		$rows = explode("\n", $baseurl);
-		foreach ($rows as $row) {
-			$items[trim($row)] = array(
-		   		'type' => MENU_CALLBACK,
-				'access callback' => 'user_access',
-				'access arguments' => array('access content'),
-				 //'access callback' => TRUE
-				 
-				'page callback' => 'visitproxy_url_callback'  
-			);
+	
+	$items['raw/%'] = array(
+		'page callback' => 'visitproxy_raw',
+		'access arguments' => array('access content'),          
+		'type' => MENU_NORMAL_ITEM
+	);
+	
+	$languages = i18n_language_list();
+	foreach ($languages as $lang => $language) {
+		$baseurl = variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', ""));
+		if (strlen($baseurl) > 0) {
+			$rows = explode("\n", $baseurl);
+			foreach ($rows as $row) {
+				$items[trim($row)] = array(
+			   		'type' => MENU_CALLBACK,
+					'access callback' => 'user_access',
+					'access arguments' => array('access content'),
+					 //'access callback' => TRUE
+					 
+					'page callback' => 'visitproxy_url_callback'  
+				);
+			}
 		}
 	}
 
 	return $items;
+}
+
+function visitproxy_raw($arg) {
+	$visitproxyclient = visitproxy_get_client(url("raw"));
+	if ($visitproxyclient) {
+		$visitproxyclient->setFormat('json');
+		$visitproxyclient->makeRequest();
+		print $visitproxyclient->getBody();
+	}
+	print "";
 }
 
 function visitproxy_admin() {
