@@ -15,7 +15,7 @@ function VisitProxyCultures() {
 	"da" => "da-DK",
 	"div" => "div-MV",
 	"nl" => "nl-NL",
-	"en" => "en-US",
+	"en" => "en-GB",
 	"et" => "et-EE",
 	"fo" => "fo-FO",
 	"fa" => "fa-IR",
