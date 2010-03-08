@@ -8,14 +8,13 @@ function visitproxy_getclient() {
 		return false;
 	//instantiate visitproxyclient
 	$lang = i18n_get_lang();
-	$baseurl = variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', ""));
+	$baseurl = trim(variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', "")));
 	$visitproxyclient = false;
 	if (strlen($baseurl) > 0) {
 		$rows = explode("\n", $baseurl);
 		$base = $baseurl;
 		foreach ($rows as $row) {
 			$row = url(trim(str_replace("//", "/", str_replace("/%", "", $row))));
-			
 			if (strpos($_SERVER['REQUEST_URI'], $row."/") === 0) {
 				$visitproxyclient = visitproxy_get_client($row);
 				return $visitproxyclient;				
@@ -88,7 +87,7 @@ function visitproxy_menu() {
 function visitproxy_raw($arg) {
 	$visitproxyclient = visitproxy_get_client(url("raw"));
 	if ($visitproxyclient) {
-		$visitproxyclient->setFormat('json');
+		$visitproxyclient->setFormat(false);
 		$visitproxyclient->makeRequest();
 		print $visitproxyclient->getBody();
 	}
