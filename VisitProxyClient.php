@@ -84,7 +84,7 @@ class VisitProxyClient  {
 			$curl = curl_init($proxyUri);
 			curl_setopt($curl, CURLOPT_COOKIE, $cookie);
 			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-			curl_setopt($curl, CURLOPT_HEADER, true);
+			curl_setopt($curl, CURLOPT_HEADER, false);
 			curl_setopt($curl, CURLOPT_HEADERFUNCTION, array(&$this,'readHeader'));
 			
 			if ($method == "POST") {
@@ -162,7 +162,8 @@ class VisitProxyClient  {
 		$reqParam .= "&baseurl=".urlencode($this->baseUrl);
 		$reqParam .= "&culture=".urlencode($this->lang);
 //		$reqParam .= "&rewrite=".urlencode($this->usingRewrite ? 1:0);
-		$reqParam .= "&format=".urlencode($this->format);
+		if ($this->format)
+			$reqParam .= "&format=".urlencode($this->format);
 		$reqParam .= "&remoteIp=".urlencode($_SERVER['REMOTE_ADDR']);
 		
 		return $reqParam;
