@@ -164,7 +164,7 @@ class VisitProxyClient  {
 //		$reqParam .= "&rewrite=".urlencode($this->usingRewrite ? 1:0);
 		if ($this->format)
 			$reqParam .= "&format=".urlencode($this->format);
-		$reqParam .= "&remoteIp=".urlencode($_SERVER['REMOTE_ADDR']);
+		$reqParam .= "&remoteip=".urlencode($_SERVER['REMOTE_ADDR']);
 		
 		return $reqParam;
 	}
