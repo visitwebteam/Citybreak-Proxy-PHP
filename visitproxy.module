@@ -168,7 +168,14 @@ function visitproxy_block($op = 'list', $delta = 0, $edit = array()) {
 function visitproxy_render() {
 	$visitproxyclient = visitproxy_getclient();
 	if ($visitproxyclient) {
+		$visitproxyclient->setOob(true);
 		$visitproxyclient->makeRequest();
+		if ($visitproxyclient->hasData("title")) {
+			drupal_set_title(check_plain($visitproxyclient->getData("title")).drupal_get_title());
+		}
+		if ($visitproxyclient->hasData("description")) {
+			drupal_set_html_head("<meta name=\"description\" value=\"".check_plain($visitproxyclient->getData("description"))."\" />");
+		}
 		return $visitproxyclient->getBody();
 	}
 	return "";

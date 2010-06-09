@@ -11,6 +11,9 @@ class VisitProxyClient  {
 	private $resultCode;
 	private $enableDebug;
 	private $resultLocation;
+	private $requestUri;
+	private $useOob;
+	private $oobData;
 	
 	/**
 	 * @return unknown
@@ -24,6 +27,22 @@ class VisitProxyClient  {
 	}
 	public function setLanguage($lang) {
 		$this->lang = $lang;
+	}
+	public function setOob($set) {
+		$this->useOob = ($set === true);
+	}
+	
+	public function getData($key) {
+		if (array_key_exists($key, $this->oobData)) {
+			return $this->oobData[$key];
+		}	
+		return false;
+	}
+	public function hasData($key) {
+		if (array_key_exists($key, $this->oobData)) {
+			return true;
+		}	
+		return false;
 	}
 	
 	private function debug($string, $name) {
@@ -63,9 +82,9 @@ class VisitProxyClient  {
 			$header = "Cookie: ".$cookie;
 			
 		if (strlen($url) > 0) {
-			$requestUri = $url;	
+			$this->requestUri = $url;	
 		} else {
-			$requestUri = str_replace($this->baseUrl,"",$_SERVER['REQUEST_URI']);
+			$this->requestUri = str_replace($this->baseUrl,"",$_SERVER['REQUEST_URI']);
 		}
 		
 		$postData = trim(file_get_contents('php://input'));
@@ -73,10 +92,10 @@ class VisitProxyClient  {
 
 		$resultCode = 0;
 		$resultText  = "";
-		if(strlen($requestUri) == 0 || $requestUri[0] != "/")
-			$requestUri = "/" . $requestUri;
+		if(strlen($this->requestUri) == 0 || $this->requestUri[0] != "/")
+			$this->requestUri = "/" . $this->requestUri;
 		
-		$proxyUri = $this->proxyUrl.$requestUri.$this->constructParams();
+		$proxyUri = $this->proxyUrl.$this->requestUri.$this->constructParams();
 		$this->debug($proxyUri, "Proxy url");
 		$this->debug(var_export($postData, true), "Post data");
 		if (function_exists('curl_init')) {
@@ -125,6 +144,9 @@ class VisitProxyClient  {
 			$this->body = $result;
 		}
 		
+		if ($this->useOob) {
+			$this->oobData = $this->ExtractOobData();
+		}
 		
 		if (!$noheader && strlen($this->resultStatus) > 0) {
 			header($this->resultStatus);
@@ -156,14 +178,36 @@ class VisitProxyClient  {
 		
 	}
 	
+	private function ExtractOobData() {
+		$oobstart = strpos($this->body, "<!-- BEGIN OOB-DATA");
+		$data = array();	
+		if ($oobstart > 0) {
+			$oobend = strpos($this->body, "-->", $oobstart);
+			$oobraw = trim(str_replace("<!-- BEGIN OOB-DATA", "", substr($this->body, $oobstart, ($oobend-$oobstart)-1)));
+			$this->body = substr($this->body, 0, $oobstart);
+			
+			$oobxml = simplexml_load_string($oobraw);
+			if (isset($oobxml->data)) {
+				foreach ($oobxml->data->children() as $key => $value){
+					$data[$key] = trim((string)$value);
+				}
+			}
+		}
+		return $data;
+	}
+	
 	private function constructParams()  {
-		$reqParam = (strpos($_SERVER['REQUEST_URI'],"?") === FALSE) ? "?" : "&";
+		$reqParam = (strpos($this->requestUri,"?") === FALSE) ? "?" : "&";
 		$reqParam .= "apikey=".urlencode($this->apiKey);
 		$reqParam .= "&baseurl=".urlencode($this->baseUrl);
 		$reqParam .= "&culture=".urlencode($this->lang);
 //		$reqParam .= "&rewrite=".urlencode($this->usingRewrite ? 1:0);
 		if ($this->format)
 			$reqParam .= "&format=".urlencode($this->format);
+			
+		if ($this->useOob)
+			$reqParam .= "&oob=true";
+			
 		$reqParam .= "&remoteip=".urlencode($_SERVER['REMOTE_ADDR']);
 		
 		return $reqParam;
