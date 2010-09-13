@@ -17,11 +17,11 @@ function visitproxy_getclient() {
 			$row = url(trim(str_replace("//", "/", str_replace("/%", "", $row))));
 			if (strpos($_SERVER['REQUEST_URI'], $row."/") === 0) {
 				$visitproxyclient = visitproxy_get_client($row);
-				return $visitproxyclient;				
+				return $visitproxyclient;
 			}
 		}
 	}
-	
+
 	//only make request if we are inside the base url
 	//if($visitproxyclient && $visitproxyclient->baseUrlCalled())
 	return $visitproxyclient;
@@ -47,7 +47,7 @@ function visitproxy_get_culture($lang = false) {
 
 function visitproxy_menu() {
 	$items = array();
-	
+
 	$items['admin/settings/visitproxy'] = array(
 		'title' => 'Citybreak Information Proxy',
 		'description' => 'Settings for the Citybreak Information Proxy',
@@ -56,13 +56,13 @@ function visitproxy_menu() {
 		'access arguments' => array('access administration pages'),
 		'type' => MENU_NORMAL_ITEM,
 	);
-	
+
 	$items['raw/%'] = array(
 		'page callback' => 'visitproxy_raw',
-		'access arguments' => array('access content'),          
+		'access arguments' => array('access content'),
 		'type' => MENU_NORMAL_ITEM
 	);
-	
+
 	$languages = i18n_language_list();
 	foreach ($languages as $lang => $language) {
 		$baseurl = variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', ""));
@@ -74,8 +74,8 @@ function visitproxy_menu() {
 					'access callback' => 'user_access',
 					'access arguments' => array('access content'),
 					 //'access callback' => TRUE
-					 
-					'page callback' => 'visitproxy_url_callback'  
+
+					'page callback' => 'visitproxy_url_callback'
 				);
 			}
 		}
@@ -103,31 +103,31 @@ function visitproxy_admin() {
 		variable_set('menu_rebuild_needed', TRUE);
 	}
 	variable_set('visitproxy_baseurl_prev_'.$lang, $currentbaseurl);
-	
+
 	$form['visitproxy_key'] = array(
 		'#type' => 'textfield',
 		'#title' => t('API Key'),
 		'#default_value' => variable_get('visitproxy_key', ""),
 		'#description' => t("API Key for Citybreak Information Proxy"),
 		'#required' => TRUE
-	); 
-  
+	);
+
 	$form['visitproxy_baseurl_'.$lang] = array(
 		'#type' => 'textarea',
 		'#title' => t('Base urls'),
 		'#default_value' => variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', "")),
 		'#description' => t("Base urls for proxy calls. All pages under this url will be passed to the proxy. This setting is language specific."),
 		'#required' => TRUE
-	); 
-  
+	);
+
 	$form['visitproxy_proxyurl'] = array(
 	  	'#type' => 'textfield',
 	    '#title' => t('Proxy server (optional)'),
 	    '#default_value' => variable_get('visitproxy_proxyurl', ""),
 	    '#description' => t("Url to the proxy server. Leave blank for default."),
 	    '#required' => FALSE
-	); 
-	#$form['#submit'][] = 'visitproxy_settings_form_submit'; 
+	);
+	#$form['#submit'][] = 'visitproxy_settings_form_submit';
 	return system_settings_form($form);
 }
 /**
@@ -136,7 +136,7 @@ function visitproxy_admin() {
 * @param integer $delta code to identify the block
 * @param array $edit only for "save" operation
 **/
-function visitproxy_block($op = 'list', $delta = 0, $edit = array()) { 
+function visitproxy_block($op = 'list', $delta = 0, $edit = array()) {
 	global $visitproxyclient;
 	if ($op == "list") {
 	// Generate listing of blocks from this module, for the admin/block page
@@ -144,19 +144,19 @@ function visitproxy_block($op = 'list', $delta = 0, $edit = array()) {
 		$block[0]["info"] = t('Visit Proxy Client');
 		return $block;
 	}  else if ($op == 'view') {
-		
+
 		// Generate our block content
-		
+
 		// content variable that will be returned for display
-		$block_content = visitproxy_render(); 
-		
+		$block_content = visitproxy_render();
+
 		// check to see if there was any content before returning
 		//  the block view
 		if (strlen($block_content) == 0) {
 		  // no content from a week ago, return nothing.
 			return;
 		}
-		
+
 		// set up the block
 		//$block['subject'] = 'Visit Proxy Client';
 		$block['content'] = $block_content;
@@ -172,6 +172,7 @@ function visitproxy_render() {
 		$visitproxyclient->makeRequest();
 		if ($visitproxyclient->hasData("title")) {
 			drupal_set_title(check_plain($visitproxyclient->getData("title")).drupal_get_title());
+			drupal_set_html_head("<meta property=\"og:title\" content=\"".check_plain($visitproxyclient->getData("title"))."\" />");
 		}
 		if ($visitproxyclient->hasData("description")) {
 			drupal_set_html_head("<meta name=\"description\" value=\"".check_plain($visitproxyclient->getData("description"))."\" />");
