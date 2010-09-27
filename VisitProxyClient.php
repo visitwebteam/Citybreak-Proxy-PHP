@@ -14,6 +14,9 @@ class VisitProxyClient  {
 	private $requestUri;
 	private $useOob;
 	private $oobData;
+	private $contentType;
+	private $lastModified;
+	private $cacheControl;
 
 	/**
 	 * @return unknown
@@ -56,7 +59,7 @@ class VisitProxyClient  {
 	function __construct($apiKey, $baseUrl, $url = "", $language = "en-US") {
 		$this->apiKey = $apiKey;
 		$this->baseUrl = $baseUrl;
-		$this->proxyUrl = strlen($url) > 0 ? $url : PROXY_URL;
+		$this->proxyUrl = strlen($url) > 0 ? $url : self::PROXY_URL;
 		$this->format = "html";
 		$this->lang = $language;
 		$this->resultStatus = "HTTP/1.1 200 OK";
@@ -112,17 +115,10 @@ class VisitProxyClient  {
 				curl_setopt($curl, CURLOPT_POSTFIELDS,$postData);
 			}
 			$this->body = curl_exec($curl);
-
-			preg_match ('/[^;]*/', curl_getinfo($curl, CURLINFO_CONTENT_TYPE), $matches);
-			if ($matches[0] != "text/html" && $_SERVER['SCRIPT_NAME'] != '/cron.php') {
-				header('Content-type: ' . $matches[0]);
-				ob_clean();
-				echo $this->body;
-				curl_close($curl);
-				exit();
-			}
-
 			curl_close($curl);
+
+			$this->flushData();
+
 		} else {
 			$this->debug("FOpen", "Request type");
 			$this->debug($context_options, "Context options");
@@ -133,7 +129,7 @@ class VisitProxyClient  {
 				$this->handleError();
 				return;
 			}
-			$this->debug("Handle success");
+			$this->debug("Handle success", "Handle success");
 			$result = "";
 			while (!feof($handle)) {
 	           	$result .= fread($handle, 4096);
@@ -153,12 +149,7 @@ class VisitProxyClient  {
 			}
 			$this->body = $result;
 
-			if ($meta["wrapper_data"][2] != "Content-Type: text/html" && $_SERVER['SCRIPT_NAME'] != '/cron.php') {
-				header($meta["wrapper_data"][2]);
-				ob_clean();
-				echo $this->body;
-				exit();
-			}
+			$this->flushData();
 		}
 
 		if ($this->useOob) {
@@ -177,7 +168,7 @@ class VisitProxyClient  {
 
 	private function readHeader($curl, $header) {
 		$this->debug($header, "Header");
-		//extracting example data: filename from header field Content-Disposition
+
 		if (preg_match("/Set-Cookie: ASP.NET_SessionId=([A-Za-z0-9]*);/", $header, $matches)) {
 			$_SESSION['visitSessionId'] = $matches[1];
 		}
@@ -188,10 +179,29 @@ class VisitProxyClient  {
 		if (strpos($header, "Location:") === 0) {
 			$this->resultLocation = $header;
 		}
-
+		if (strpos($header, "Content-Type:") === 0) {
+			$this->contentType = $header;
+		}
+		if (strpos($header, "Last-Modified:") === 0) {
+			$this->lastModified = $header;
+		}
+		if (strpos($header, "Cache-Control:") === 0) {
+			$this->cacheControl = $header;
+		}
 
 		return strlen($header);
+	}
 
+	private function flushData() {
+		if (strpos($this->contentType, "Content-Type: text/html") === false && $_SERVER['SCRIPT_NAME'] != '/cron.php') {
+			header($this->contentType);
+			header($this->cacheControl);
+			header($this->lastModified);
+			ob_clean();
+			print $this->body;
+			exit();
+		}
+		return;
 	}
 
 	private function ExtractOobData() {
