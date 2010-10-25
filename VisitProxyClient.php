@@ -117,7 +117,10 @@ class VisitProxyClient  {
 			$this->body = curl_exec($curl);
 			curl_close($curl);
 
-			$this->flushData();
+			if ($_SERVER['SCRIPT_NAME'] != '/cron.php') {
+				$this->flushData();
+			}
+
 
 		} else {
 			$this->debug("FOpen", "Request type");
@@ -149,7 +152,9 @@ class VisitProxyClient  {
 			}
 			$this->body = $result;
 
-			$this->flushData();
+			if ($_SERVER['SCRIPT_NAME'] != '/cron.php') {
+				$this->flushData();
+			}
 		}
 
 		if ($this->useOob) {
@@ -193,7 +198,7 @@ class VisitProxyClient  {
 	}
 
 	private function flushData() {
-		if (strpos($this->contentType, "Content-Type: text/html") === false && $_SERVER['SCRIPT_NAME'] != '/cron.php') {
+		if (strpos($this->contentType, "Content-Type: text/html") === false) {
 			header($this->contentType);
 			header($this->cacheControl);
 			header($this->lastModified);

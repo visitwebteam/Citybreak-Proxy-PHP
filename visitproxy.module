@@ -175,7 +175,7 @@ function visitproxy_render() {
 			drupal_set_html_head("<meta property=\"og:title\" content=\"".check_plain($visitproxyclient->getData("title"))."\" />");
 		}
 		if ($visitproxyclient->hasData("description")) {
-			drupal_set_html_head("<meta name=\"description\" value=\"".check_plain($visitproxyclient->getData("description"))."\" />");
+			drupal_set_html_head("<meta name=\"description\" content=\"".check_plain($visitproxyclient->getData("description"))."\" />");
 		}
 		return $visitproxyclient->getBody();
 	}
