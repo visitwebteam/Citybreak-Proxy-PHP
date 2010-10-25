@@ -226,6 +226,7 @@ class VisitProxyClient  {
 		if (strpos($header, "Content-Type:") === 0) {
 			$this->contentType = $header;
 		}
+
 		if (strpos($header, "Cache-Control:") === 0) {
 			$this->cacheControl = $header;
 		}
@@ -235,7 +236,6 @@ class VisitProxyClient  {
 		if (strpos($header, "Expires:") === 0) {
 			$this->expires = $header;
 		}
-
 		return strlen($header);
 	}
 

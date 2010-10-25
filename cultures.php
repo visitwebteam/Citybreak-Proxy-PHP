@@ -1,4 +1,4 @@
-<?php 
+<?php
 function VisitProxyCultures() {
 	return array("af" => "af-ZA",
 	"sq" => "sq-AL",
@@ -45,6 +45,7 @@ function VisitProxyCultures() {
 	"mr" => "mr-IN",
 	"mn" => "mn-MN",
 	"no" => "nn-NO",
+	"nb" => "nb-NO",
 	"pl" => "pl-PL",
 	"pt" => "pt-PT",
 	"pa" => "pa-IN",
