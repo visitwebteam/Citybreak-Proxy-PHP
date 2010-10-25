@@ -106,7 +106,7 @@ class VisitProxyClient  {
 		$cookie = "";
 		$header = "";
 		if (isset($_SESSION['visitSessionId' + $this->legacymode ? "_legacy" : ""])) {
-			$cookie = "ASP.NET_SessionId=" . $_SESSION['visitSessionId'] ."; ";
+			$cookie = "ASP.NET_SessionId=" . $_SESSION['visitSessionId' + $this->legacymode ? "_legacy" : ""] ."; ";
 		}
 		if (!$this->legacymode) {
 			$cookie .= "CitybreakProxyClient=UserHostAddress=".$_SERVER['REMOTE_ADDR']."&"."UserAgent=".urlencode($_SERVER['HTTP_USER_AGENT']).";";
@@ -226,7 +226,6 @@ class VisitProxyClient  {
 		if (strpos($header, "Content-Type:") === 0) {
 			$this->contentType = $header;
 		}
-
 		if (strpos($header, "Cache-Control:") === 0) {
 			$this->cacheControl = $header;
 		}
