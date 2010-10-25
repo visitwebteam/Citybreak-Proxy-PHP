@@ -105,8 +105,8 @@ class VisitProxyClient  {
 		$method = $_SERVER['REQUEST_METHOD'];
 		$cookie = "";
 		$header = "";
-		if (isset($_SESSION['visitSessionId' + $this->legacymode ? "_legacy" : ""])) {
-			$cookie = "ASP.NET_SessionId=" . $_SESSION['visitSessionId' + $this->legacymode ? "_legacy" : ""] ."; ";
+		if (isset($_SESSION['visitSessionId' . $this->legacymode ? "_legacy" : ""])) {
+			$cookie = "ASP.NET_SessionId=" . $_SESSION['visitSessionId' . $this->legacymode ? "_legacy" : ""] ."; ";
 		}
 		if (!$this->legacymode) {
 			$cookie .= "CitybreakProxyClient=UserHostAddress=".$_SERVER['REMOTE_ADDR']."&"."UserAgent=".urlencode($_SERVER['HTTP_USER_AGENT']).";";
@@ -214,7 +214,7 @@ class VisitProxyClient  {
 		$this->debug($header, "Header");
 
 		if (preg_match("/Set-Cookie: ASP.NET_SessionId=([A-Za-z0-9]*);/", $header, $matches)) {
-			$_SESSION['visitSessionId' + $this->legacymode ? "_legacy" : ""] = $matches[1];
+			$_SESSION['visitSessionId' . $this->legacymode ? "_legacy" : ""] = $matches[1];
 		}
 		if (preg_match("/HTTP\/[0-9].[0-9] ([0-9]*) /", $header, $matches)) {
 			$this->resultStatus = $header;
