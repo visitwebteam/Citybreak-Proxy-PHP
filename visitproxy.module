@@ -4,38 +4,45 @@ $VISIT_PROXY_ACTIVE	= false;
 
 function visitproxy_getclient() {
 	global $VISIT_PROXY_ACTIVE;
-	if ($VISIT_PROXY_ACTIVE !== TRUE)
+	if ($VISIT_PROXY_ACTIVE !== TRUE) {
 		return false;
-	//instantiate visitproxyclient
+	}
+	// Instantiate visitproxyclient
 	$lang = i18n_get_lang();
-	$baseurl = trim(variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', "")));
+	$baseurl = trim(variable_get('visitproxy_baseurl_' . $lang, variable_get('visitproxy_baseurl_en', "")));
 	$visitproxyclient = false;
 	if (strlen($baseurl) > 0) {
 		$rows = explode("\n", $baseurl);
 		$base = $baseurl;
 		foreach ($rows as $row) {
+			$legacymode = false;
+			if (strpos($row, "#") === 0) {
+				$legacymode = true;
+				$row = substr($row, 1);
+			}
 			$row = url(trim(str_replace("//", "/", str_replace("/%", "", $row))));
+
 			if (strpos($_SERVER['REQUEST_URI'], $row."/") === 0) {
-				$visitproxyclient = visitproxy_get_client($row);
+				$visitproxyclient = visitproxy_get_client($row, $legacymode);
 				return $visitproxyclient;
 			}
 		}
 	}
 
-	//only make request if we are inside the base url
-	//if($visitproxyclient && $visitproxyclient->baseUrlCalled())
 	return $visitproxyclient;
 }
 
-function visitproxy_get_client($baseUrl, $lang = false) {
+function visitproxy_get_client($baseUrl, $legacymode, $lang = false) {
 	$key = variable_get('visitproxy_key', "");
+	$onlineid = variable_get('visitproxy_onlineid', "");
 	module_load_include('php', 'visitproxy', 'VisitProxyClient');
-	return new VisitProxyClient($key,$baseUrl, variable_get('visitproxy_proxyurl', ""), visitproxy_get_culture($lang));
+	return new VisitProxyClient($key, $baseUrl, $onlineid, $legacymode, variable_get('visitproxy_proxyurl', ""), visitproxy_get_culture($lang));
 }
 
 function visitproxy_get_culture($lang = false) {
-	if (!$lang)
+	if (!$lang) {
 		$lang = i18n_get_lang();
+	}
 	module_load_include('php', 'visitproxy', 'cultures');
 	$cultures = VisitProxyCultures();
 	if (isset($cultures[$lang])) {
@@ -69,12 +76,11 @@ function visitproxy_menu() {
 		if (strlen($baseurl) > 0) {
 			$rows = explode("\n", $baseurl);
 			foreach ($rows as $row) {
+				$row = (strpos($row, "#") === 0) ? substr($row, 1) : $row;
 				$items[trim($row)] = array(
 			   		'type' => MENU_CALLBACK,
 					'access callback' => 'user_access',
 					'access arguments' => array('access content'),
-					 //'access callback' => TRUE
-
 					'page callback' => 'visitproxy_url_callback'
 				);
 			}
@@ -112,6 +118,14 @@ function visitproxy_admin() {
 		'#required' => TRUE
 	);
 
+	$form['visitproxy_onlineid'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Citybreak Online Id'),
+		'#default_value' => variable_get('visitproxy_onlineid', ""),
+		'#description' => t("Citybreak Online Id"),
+		'#required' => TRUE
+	);
+
 	$form['visitproxy_baseurl_'.$lang] = array(
 		'#type' => 'textarea',
 		'#title' => t('Base urls'),
@@ -127,7 +141,7 @@ function visitproxy_admin() {
 	    '#description' => t("Url to the proxy server. Leave blank for default."),
 	    '#required' => FALSE
 	);
-	#$form['#submit'][] = 'visitproxy_settings_form_submit';
+
 	return system_settings_form($form);
 }
 /**
@@ -139,31 +153,27 @@ function visitproxy_admin() {
 function visitproxy_block($op = 'list', $delta = 0, $edit = array()) {
 	global $visitproxyclient;
 	if ($op == "list") {
-	// Generate listing of blocks from this module, for the admin/block page
+		// Generate listing of blocks from this module, for the admin/block page
 		$block = array();
 		$block[0]["info"] = t('Visit Proxy Client');
 		return $block;
 	}  else if ($op == 'view') {
 
 		// Generate our block content
-
-		// content variable that will be returned for display
+		// Content variable that will be returned for display
 		$block_content = visitproxy_render();
 
-		// check to see if there was any content before returning
-		//  the block view
+		// Check to see if there was any content before returning the block view
 		if (strlen($block_content) == 0) {
-		  // no content from a week ago, return nothing.
+		  	// No content from a week ago, return nothing.
 			return;
 		}
 
-		// set up the block
-		//$block['subject'] = 'Visit Proxy Client';
+		// Set up the block
 		$block['content'] = $block_content;
 		return $block;
 	}
-
-} // function visitproxy_block
+}
 
 function visitproxy_render() {
 	$visitproxyclient = visitproxy_getclient();
@@ -172,10 +182,10 @@ function visitproxy_render() {
 		$visitproxyclient->makeRequest();
 		if ($visitproxyclient->hasData("title")) {
 			drupal_set_title(check_plain($visitproxyclient->getData("title")).drupal_get_title());
-			drupal_set_html_head("<meta property=\"og:title\" content=\"".check_plain($visitproxyclient->getData("title"))."\" />");
+			drupal_set_html_head('<meta property="og:title" content="' . check_plain($visitproxyclient->getData("title")) . '" />');
 		}
 		if ($visitproxyclient->hasData("description")) {
-			drupal_set_html_head("<meta name=\"description\" value=\"".check_plain($visitproxyclient->getData("description"))."\" />");
+			drupal_set_html_head('<meta name="description" content="' . check_plain($visitproxyclient->getData("description")) . '" />');
 		}
 		return $visitproxyclient->getBody();
 	}
@@ -196,7 +206,5 @@ function visitproxy_url_callback() {
 	$VISIT_PROXY_ACTIVE	= true;
 	$GLOBALS['conf']['cache'] = FALSE;
 	return "";
-	#$data = visitproxy_render();
-	#return $data;
 }
 

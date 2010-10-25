@@ -1,10 +1,13 @@
 <?php
 class VisitProxyClient  {
 	private $apiKey;
+	private $onlineid;
+	private $legacymode;
 	public $baseUrl;
 	private $sessionId;
 	private $body;
 	private $proxyUrl;
+	private $online3Url;
 	private $format;
 	private $lang;
 	private $resultStatus;
@@ -14,10 +17,12 @@ class VisitProxyClient  {
 	private $requestUri;
 	private $useOob;
 	private $oobData;
+	private $contentType;
+	private $lastModified;
+	private $cacheControl;
+	private $expires;
 
-	/**
-	 * @return unknown
-	 */
+
 	public function getBody() {
 		return $this->body;
 	}
@@ -25,9 +30,11 @@ class VisitProxyClient  {
 	public function setFormat($format) {
 		$this->format = $format;
 	}
+
 	public function setLanguage($lang) {
 		$this->lang = $lang;
 	}
+
 	public function setOob($set) {
 		$this->useOob = ($set === true);
 	}
@@ -38,6 +45,7 @@ class VisitProxyClient  {
 		}
 		return false;
 	}
+
 	public function hasData($key) {
 		if (array_key_exists($key, $this->oobData)) {
 			return true;
@@ -52,11 +60,33 @@ class VisitProxyClient  {
 	}
 
 	const PROXY_URL = "http://proxy.citybreak.com";
+	const PROXY_TEST_URL = "http://proxy.test.citybreak.com";
+	const PROXY_TEST2_URL = "http://proxy.test2.citybreak.com";
+	const ONLINE3_URL = "http://online3.citybreak.com";
+	const ONLINE3_TEST_URL = "http://online3.test.citybreak.com";
+	const ONLINE3_TEST2_URL = "http://online3.test2.citybreak.com";
 
-	function __construct($apiKey, $baseUrl, $url = "", $language = "en-US") {
+	function __construct($apiKey, $baseUrl, $onlineid, $legacymode, $url = "", $language = "en-US") {
 		$this->apiKey = $apiKey;
+		$this->onlineid = $onlineid;
+		$this->legacymode = $legacymode;
 		$this->baseUrl = $baseUrl;
-		$this->proxyUrl = strlen($url) > 0 ? $url : PROXY_URL;
+		$proxyUrl = self::PROXY_URL;
+		$online3url = self::ONLINE3_URL;
+		if(isset($_GET["env"])) {
+			switch($_GET["env"]) {
+				case "test":
+					$proxyUrl = self::PROXY_TEST_URL;
+					$online3url = self::ONLINE3_TEST_URL;
+					break;
+				case "test2":
+					$proxyUrl = self::PROXY_TEST2_URL;
+					$online3url = self::ONLINE3_TEST2_URL;
+					break;
+			}
+		}
+		$this->proxyUrl = strlen($url) > 0 ? $url : $proxyUrl;
+		$this->online3Url = $online3url;
 		$this->format = "html";
 		$this->lang = $language;
 		$this->resultStatus = "HTTP/1.1 200 OK";
@@ -75,27 +105,37 @@ class VisitProxyClient  {
 		$method = $_SERVER['REQUEST_METHOD'];
 		$cookie = "";
 		$header = "";
-		if(isset($_SESSION['visitSessionId']))
-			$cookie = "ASP.NET_SessionId=".$_SESSION['visitSessionId'];
+		if (isset($_SESSION['visitSessionId' + $this->legacymode ? "_legacy" : ""])) {
+			$cookie = "ASP.NET_SessionId=" . $_SESSION['visitSessionId'] ."; ";
+		}
+		if (!$this->legacymode) {
+			$cookie .= "CitybreakProxyClient=UserHostAddress=".$_SERVER['REMOTE_ADDR']."&"."UserAgent=".urlencode($_SERVER['HTTP_USER_AGENT']).";";
+		}
 
-		if (strlen($cookie)>0)
-			$header = "Cookie: ".$cookie;
+		if (strlen($cookie) > 0) {
+			$header = "Cookie: " . $cookie;
+		}
 
 		if (strlen($url) > 0) {
 			$this->requestUri = $url;
 		} else {
-			$this->requestUri = str_replace($this->baseUrl,"",$_SERVER['REQUEST_URI']);
+			$this->requestUri = str_replace($this->baseUrl, "", $_SERVER['REQUEST_URI']);
 		}
 
 		$postData = trim(file_get_contents('php://input'));
-		$context_options = array ('http' => array ('method' => $method, 'header' => $header. "\r\n", 'content' => $postData, 'max_redirects' => 0, 'ignore_errors' => true ) );
+		$context_options = array('http' => array ('method' => $method, 'header' => $header. "\r\n", 'content' => $postData, 'max_redirects' => 0, 'ignore_errors' => true));
 
 		$resultCode = 0;
 		$resultText  = "";
-		if(strlen($this->requestUri) == 0 || $this->requestUri[0] != "/")
+		if (strlen($this->requestUri) == 0 || $this->requestUri[0] != "/") {
 			$this->requestUri = "/" . $this->requestUri;
+		}
 
-		$proxyUri = $this->proxyUrl.$this->requestUri.$this->constructParams();
+		if ($this->legacymode) {
+			$proxyUri = $this->proxyUrl . $this->requestUri . $this->constructParams();
+		} else {
+			$proxyUri = $this->online3Url . "/" . $this->onlineid . "/". $this->lang . "/" . $this->lang . $this->requestUri;
+		}
 		$this->debug($proxyUri, "Proxy url");
 		$this->debug(var_export($postData, true), "Post data");
 
@@ -105,60 +145,55 @@ class VisitProxyClient  {
 			curl_setopt($curl, CURLOPT_COOKIE, $cookie);
 			curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
 			curl_setopt($curl, CURLOPT_HEADER, false);
-			curl_setopt($curl, CURLOPT_HEADERFUNCTION, array(&$this,'readHeader'));
+			curl_setopt($curl, CURLOPT_HEADERFUNCTION, array(&$this, 'readHeader'));
+			curl_setopt($curl, CURLOPT_USERAGENT, "Mozilla/5.0 (compatible; CitybreakProxyClient)");
 
 			if ($method == "POST") {
 				curl_setopt($curl, CURLOPT_POST, true);
-				curl_setopt($curl, CURLOPT_POSTFIELDS,$postData);
+				curl_setopt($curl, CURLOPT_POSTFIELDS, $postData);
 			}
+
 			$this->body = curl_exec($curl);
+			curl_close($curl);
 
-			preg_match ('/[^;]*/', curl_getinfo($curl, CURLINFO_CONTENT_TYPE), $matches);
-			if ($matches[0] != "text/html" && $_SERVER['SCRIPT_NAME'] != '/cron.php') {
-				header('Content-type: ' . $matches[0]);
-				ob_clean();
-				echo $this->body;
-				curl_close($curl);
-				exit();
+			if ($_SERVER['SCRIPT_NAME'] != '/cron.php') {
+				$this->flushData();
 			}
 
-			curl_close($curl);
 		} else {
 			$this->debug("FOpen", "Request type");
 			$this->debug($context_options, "Context options");
-			$context = stream_context_create ( $context_options );
+			$context = stream_context_create($context_options);
 
-			$handle = fopen ($proxyUri, 'r', false, $context );
-			if($handle === false) {
+			$handle = fopen($proxyUri, 'r', false, $context);
+			if ($handle === false) {
 				$this->handleError();
 				return;
 			}
-			$this->debug("Handle success");
+			$this->debug("Handle success", "Handle success");
 			$result = "";
 			while (!feof($handle)) {
 	           	$result .= fread($handle, 4096);
 	       	}
 
-			$meta = stream_get_meta_data ( $handle );
+			$meta = stream_get_meta_data($handle);
 			$this->debug($meta, "Meta");
 	       	fclose($handle);
-			if(isset($meta["wrapper_data"]["headers"]))
+			if (isset($meta["wrapper_data"]["headers"])) {
 				$headers = $meta["wrapper_data"]["headers"];
-			else
+			} else {
 				$headers = $meta["wrapper_data"];
-
+			}
 			$matches = array();
 			foreach($headers as $header) {
 				$this->readHeader(null, $header);
 			}
 			$this->body = $result;
 
-			if ($meta["wrapper_data"][2] != "Content-Type: text/html" && $_SERVER['SCRIPT_NAME'] != '/cron.php') {
-				header($meta["wrapper_data"][2]);
-				ob_clean();
-				echo $this->body;
-				exit();
+			if ($_SERVER['SCRIPT_NAME'] != '/cron.php') {
+				$this->flushData();
 			}
+
 		}
 
 		if ($this->useOob) {
@@ -177,9 +212,9 @@ class VisitProxyClient  {
 
 	private function readHeader($curl, $header) {
 		$this->debug($header, "Header");
-		//extracting example data: filename from header field Content-Disposition
+
 		if (preg_match("/Set-Cookie: ASP.NET_SessionId=([A-Za-z0-9]*);/", $header, $matches)) {
-			$_SESSION['visitSessionId'] = $matches[1];
+			$_SESSION['visitSessionId' + $this->legacymode ? "_legacy" : ""] = $matches[1];
 		}
 		if (preg_match("/HTTP\/[0-9].[0-9] ([0-9]*) /", $header, $matches)) {
 			$this->resultStatus = $header;
@@ -188,10 +223,43 @@ class VisitProxyClient  {
 		if (strpos($header, "Location:") === 0) {
 			$this->resultLocation = $header;
 		}
-
+		if (strpos($header, "Content-Type:") === 0) {
+			$this->contentType = $header;
+		}
+		if (strpos($header, "Cache-Control:") === 0) {
+			$this->cacheControl = $header;
+		}
+		if (strpos($header, "Last-Modified:") === 0) {
+			$this->lastModified = $header;
+		}
+		if (strpos($header, "Expires:") === 0) {
+			$this->expires = $header;
+		}
 
 		return strlen($header);
+	}
 
+	private function flushData() {
+		header("Expires:");
+		if (strpos($this->contentType, "Content-Type: text/html") === false) {
+			header($this->contentType);
+			header($this->cacheControl);
+			if ($this->lastModified)
+				header($this->lastModified);
+			if ($this->expires)
+				header($this->expires);
+			ob_clean();
+			print $this->body;
+			exit();
+		}
+
+		header($this->cacheControl);
+		if ($this->lastModified)
+			header($this->lastModified);
+		if($this->expires)
+			header($this->expires);
+
+		return;
 	}
 
 	private function ExtractOobData() {
@@ -218,20 +286,18 @@ class VisitProxyClient  {
 		$reqParam .= "apikey=".urlencode($this->apiKey);
 		$reqParam .= "&baseurl=".urlencode($this->baseUrl);
 		$reqParam .= "&culture=".urlencode($this->lang);
-//		$reqParam .= "&rewrite=".urlencode($this->usingRewrite ? 1:0);
-		if ($this->format)
+
+		if ($this->format) {
 			$reqParam .= "&format=".urlencode($this->format);
+		}
 
-		if ($this->useOob)
+		if ($this->useOob) {
 			$reqParam .= "&oob=true";
+		}
 
-		$reqParam .= "&remoteip=".urlencode($_SERVER['REMOTE_ADDR']);
+		$reqParam .= "&remoteip=" . urlencode($_SERVER['REMOTE_ADDR']);
 
 		return $reqParam;
-	}
-
-	public function baseUrlCalled() {
-		return true;
 	}
 
 	private function handleError() {
