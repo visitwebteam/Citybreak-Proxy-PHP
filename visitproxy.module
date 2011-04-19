@@ -130,7 +130,7 @@ function visitproxy_admin() {
 		'#type' => 'textarea',
 		'#title' => t('Base urls'),
 		'#default_value' => variable_get('visitproxy_baseurl_'.$lang, variable_get('visitproxy_baseurl_en', "")),
-		'#description' => t("Base urls for proxy calls. All pages under this url will be passed to the proxy. This setting is language specific."),
+		'#description' => t("Base urls for proxy calls. All pages under this url will be passed to the proxy. This setting is language specific. IMPORTANT! Urls meant for Online 2 Proxy need a # at the beginning of the url (e.g. #events/% or #accommodation/%). Urls meant for Online 3 Proxy should not have a # (e.g. events/% or accommodation/%)."),
 		'#required' => TRUE
 	);
 
