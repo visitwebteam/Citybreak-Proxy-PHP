@@ -32,7 +32,7 @@ function visitproxy_getclient() {
 	return $visitproxyclient;
 }
 
-function visitproxy_get_client($baseUrl, $legacymode, $lang = false) {
+function visitproxy_get_client($baseUrl, $legacymode = true, $lang = false) {
 	$key = variable_get('visitproxy_key', "");
 	$onlineid = variable_get('visitproxy_onlineid', "");
 	module_load_include('php', 'visitproxy', 'VisitProxyClient');
